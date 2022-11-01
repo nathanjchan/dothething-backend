@@ -27,7 +27,7 @@ def lambda_handler(event, context):
                     # ID token is valid. Get the user's Google Account ID from the decoded token.
                     userid = idinfo['sub']
                     logger.info('User ID: %s', userid)
-                    return {
+                    response = {
                         'statusCode': 200,
                         'body': json.dumps({
                             'message': 'Success'
@@ -35,31 +35,32 @@ def lambda_handler(event, context):
                     }
                 except ValueError:
                     # Invalid token
-                    return {
+                    response = {
                         'statusCode': 401,
                         'body': json.dumps({
                             'message': 'Invalid token'
                         })
                     }
             else:
-                return {
+                response = {
                     'statusCode': 400,
                     'body': json.dumps({
                         'message': 'Missing idToken'
                     })
                 }
         else:
-            return {
+            response = {
                 'statusCode': 400,
                 'body': json.dumps({
                     'message': 'Missing body'
                 })
             }
     else:
-        return {
+        response = {
             'statusCode': 405,
             'body': json.dumps({
                 'message': 'Method not allowed'
             })
         }
-        
+    print("Response: ", response)
+    return response
