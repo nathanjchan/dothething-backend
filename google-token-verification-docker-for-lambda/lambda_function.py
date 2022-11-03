@@ -39,21 +39,25 @@ def lambda_handler(event, context):
                     # add user to accounts table in dynamodb if not already there
                     try:
                         db_response = table.get_item(Key={'id': userid})
+                        epoch = int(time.time() * 1000)
+                        sessionId = uuid.uuid4().hex
                         if 'Item' not in db_response:
-                            epoch = int(time.time() * 1000)
-                            table.put_item(Item={'id': userid, 'internalId': uuid.uuid4().hex, 'timeOfCreation': epoch, 'timeOfLastLogin': epoch})
+                            # new account
+                            table.put_item(Item={'id': userid, 'sessionId': sessionId, 'timeOfCreation': epoch, 'timeOfLastLogin': epoch})
                         else:
-                            table.update_item(Key={'id': userid}, UpdateExpression='SET timeOfLastLogin = :val1', ExpressionAttributeValues={':val1': int(time.time() * 1000)})  
+                            # existing account
+                            table.update_item(Key={'id': userid}, UpdateExpression='SET sessionId = :s, timeOfLastLogin = :t', ExpressionAttributeValues={':s': sessionId, ':t': epoch})
                     except ClientError as e:
                         logger.error(e.response['Error']['Message'])
                         return {
                             'statusCode': 500,
-                            'body': json.dumps({'message': 'Internal server error during database operation'})
+                            'body': json.dumps({'message': 'Internal database error'})
                         }
                     response = {
                         'statusCode': 200,
                         'body': json.dumps({
-                            'message': 'Success'
+                            'message': 'Success',
+                            'sessionId': sessionId
                         })
                     }
                 except ValueError:
