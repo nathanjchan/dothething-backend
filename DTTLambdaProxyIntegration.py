@@ -191,7 +191,8 @@ def lambda_handler(event, context):
     elif http_method == 'POST' and 'file-extension' in headers and 'session-id' in headers:
         
         def generateCode():
-            code = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(7))
+            code = str(uuid.uuid4().hex)[:8]
+
             try:
                 response = videos_table.query(KeyConditionExpression=Key('code').eq(code))
             except ClientError as err:
