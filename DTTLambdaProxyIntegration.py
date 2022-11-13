@@ -6,7 +6,6 @@ from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from decimal import Decimal
 import random
-import string
 
 print("Loading function")
 
@@ -191,8 +190,7 @@ def lambda_handler(event, context):
     elif http_method == 'POST' and 'file-extension' in headers and 'session-id' in headers:
         
         def generateCode():
-            code = str(uuid.uuid4().hex)[:8]
-
+            code = ''.join(random.choice("123456789abcdefABCDEF") for _ in range(8))
             try:
                 response = videos_table.query(KeyConditionExpression=Key('code').eq(code))
             except ClientError as err:
