@@ -35,7 +35,7 @@ def lambda_handler(event, context):
             'body': 'Invalid credentials.'
         }
 
-    # DEFCON 0
+    # DEFCON 0: get metadata for clips associated with given account
     elif http_method == 'GET' and 'session-id' in headers:
 
         print("Entered DEFCON 0")
@@ -73,6 +73,12 @@ def lambda_handler(event, context):
                 # delete accountId from each video
                 for video in videos:
                     del video['accountId']
+                    # add a presigned URL to thumbnail for each video (key + .jpg)
+                    video['thumbnail'] = s3.generate_presigned_url(
+                        'get_object',
+                        Params={'Bucket': 'dothethingthumbnails',
+                                'Key': video['id'] + '.jpg'}
+                    )
 
                 # return list of videos
                 response = {
@@ -80,7 +86,7 @@ def lambda_handler(event, context):
                     'body': json.dumps(videos, cls=DecimalEncoder)
                 }
     
-    # DEFCON 1.1
+    # DEFCON 1.1: get metadata for existing thing, given code
     elif http_method == 'GET' and 'code' in headers:
         
         print("Entered DEFCON 1.1")
@@ -104,6 +110,12 @@ def lambda_handler(event, context):
             # remove accountId from videos
             for video in videos:
                 del video['accountId']
+                    # add a presigned URL to thumbnail for each video (key + .jpg)
+                    video['thumbnail'] = s3.generate_presigned_url(
+                        'get_object',
+                        Params={'Bucket': 'dothethingthumbnails',
+                                'Key': video['id'] + '.jpg'}
+                    )
 
             response = {
                 'statusCode': 200,
@@ -113,7 +125,7 @@ def lambda_handler(event, context):
                 'body': json.dumps(videos, cls=DecimalEncoder)
             }
             
-    # DEFCON 1.2
+    # DEFCON 1.2: get presigned URL given id
     elif http_method == 'GET' and 'id' in headers:
         
         print("Entered DEFCON 1.2")
@@ -186,7 +198,7 @@ def lambda_handler(event, context):
                             'body': presigned_url
                         }
         
-    # DEFCON 3.1
+    # DEFCON 3.1: create new thing
     elif http_method == 'POST' and 'file-extension' in headers and 'session-id' in headers:
         
         def generateCode():
