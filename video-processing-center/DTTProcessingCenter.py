@@ -31,6 +31,28 @@ def lambda_handler(event, context):
     # parse session_id from key
     session_id = key_split[2].split(".")[0]
     print("Session ID is", session_id)
+
+    try:
+        # download video from S3
+        response = s3.get_object(Bucket=bucket, Key=key)
+
+        # write video to /tmp
+        os.chdir("/tmp")
+        tmp_file = key
+        with open(tmp_file, "wb") as f:
+            f.write(response["Body"].read())
+
+        # get thumbnail of video
+        thumbnail = "".join([key, ".jpg"])
+        os.system("ffmpeg -i {} -ss 00:00:01.000 -vframes 1 {}".format(key, thumbnail))
+
+        # upload thumbnail to S3
+        s3.upload_file(thumbnail, "dothethingthumbnails", thumbnail)
+
+    except Exception as e:
+        print(e)
+        print("Error getting object {} from bucket {}. Make sure they exist and your bucket is in the same region as this function.".format(key, bucket))
+        raise e
     
     # query dothething-accounts to get account_id of the account with session_id
     try:
@@ -42,6 +64,10 @@ def lambda_handler(event, context):
             err.response['Error']['Code'], err.response['Error']['Message'])
         raise
     else:
+        if len(response['Items']) == 0:
+            print("No account found with session ID", session_id)
+            return
+            
         account_id = response['Items'][0]['id']
         print("Account ID is", account_id)
 
