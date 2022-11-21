@@ -174,28 +174,6 @@ def lambda_handler(event, context):
                         err.response['Error']['Code'], err.response['Error']['Message'])
                     raise
                 else:
-                    # check if there is a video in the response that has the same account_id
-                    for item in response['Items']:
-                        if item['accountId'] == account_id:
-                            video_exists = True
-                    if video_exists:
-                        response = {
-                            'statusCode': 409,
-                            'body': 'A video with this code already exists.'
-                        }
-                    else:
-                        file_extension = headers['file-extension'].strip('.').lower()
-                        key = '{}-{}-{}.{}'.format(code, uuid.uuid4().hex, session_id, file_extension)
-                        presigned_url = s3.generate_presigned_url(
-                            ClientMethod='put_object',
-                            Params={
-                                'Bucket': 'dothethingvideos',
-                                'Key': key
-                            }
-                        )
-                        response = {
-                            'statusCode': 200,
-                            'body': presigned_url
                         }
         
     # DEFCON 3.1: create new thing
