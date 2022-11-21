@@ -6,6 +6,7 @@ from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from decimal import Decimal
 import random
+import base64
 
 print("Loading function")
 
@@ -23,20 +24,42 @@ dyn = boto3.resource('dynamodb')
 videos_table = dyn.Table('dothethingvideos-metadata')
 accounts_table = dyn.Table('dothething-accounts')
 
+# given response["Items"], do all processing needed to get it ready for return
+def processVideos(videos: dict, batch_index: int) -> dict:
+    videos.sort(key=lambda x: x['timeOfCreation'], reverse=True)
+    start_index = batch_index * 33
+    end_index = start_index + 33
+    videos = videos[start_index:end_index]
+    print("Videos are", videos)
+
+    for video in videos:
+        del video['accountId']
+        try:
+            thumbnailBytes = s3.get_object(Bucket='dothethingthumbnails', Key=video['id'] + '.jpg')['Body'].read()
+        except:
+            thumbnailBytes = s3.get_object(Bucket='dothethingthumbnails', Key="obama.jpg")['Body'].read()
+        video['thumbnailBase64'] = base64.b64encode(thumbnailBytes).decode('utf-8')
+    return videos
+
 def lambda_handler(event, context):
     logger.info('Request: %s', event)
     
     http_method = event.get('httpMethod')
     headers = event.get('headers')
     
-    if 'password' not in headers or headers['password'] != 'ThisIsEpicPassword':
+    if http_method == 'OPTIONS':
+        response = {
+            'statusCode': 200
+        }
+
+    elif 'password' not in headers or headers['password'] != 'ThisIsEpicPassword':
         response = {
             'statusCode': 401,
             'body': 'Invalid credentials.'
         }
 
     # DEFCON 0: get metadata for clips associated with given account
-    elif http_method == 'GET' and 'session-id' in headers:
+    elif http_method == 'GET' and 'session-id' in headers and 'batch-index' in headers:
 
         print("Entered DEFCON 0")
         session_id = headers['session-id']
@@ -65,29 +88,14 @@ def lambda_handler(event, context):
                     err.response['Error']['Code'], err.response['Error']['Message'])
                 raise
             else:
-                videos = response['Items']
-                # sort videos by timeOfCreation
-                videos.sort(key=lambda x: x['timeOfCreation'], reverse=True)
-                print("Videos are", videos)
-
-                # delete accountId from each video
-                for video in videos:
-                    del video['accountId']
-                    # add a presigned URL to thumbnail for each video (key + .jpg)
-                    video['thumbnail'] = s3.generate_presigned_url(
-                        'get_object',
-                        Params={'Bucket': 'dothethingthumbnails',
-                                'Key': video['id'] + '.jpg'}
-                    )
-
-                # return list of videos
+                videos = processVideos(response['Items'], int(headers['batch-index']))
                 response = {
                     'statusCode': 200,
                     'body': json.dumps(videos, cls=DecimalEncoder)
                 }
     
     # DEFCON 1.1: get metadata for existing thing, given code
-    elif http_method == 'GET' and 'code' in headers:
+    elif http_method == 'GET' and 'code' in headers and 'batch-index' in headers:
         
         print("Entered DEFCON 1.1")
         code = headers['code']
@@ -104,24 +112,9 @@ def lambda_handler(event, context):
                 err.response['Error']['Code'], err.response['Error']['Message'])
             raise
         else:
-            videos = response['Items']
-            print("Videos are", videos)
-
-            # remove accountId from videos
-            for video in videos:
-                del video['accountId']
-                    # add a presigned URL to thumbnail for each video (key + .jpg)
-                    video['thumbnail'] = s3.generate_presigned_url(
-                        'get_object',
-                        Params={'Bucket': 'dothethingthumbnails',
-                                'Key': video['id'] + '.jpg'}
-                    )
-
+            videos = processVideos(response['Items'], int(headers['batch-index']))
             response = {
                 'statusCode': 200,
-                'headers': {
-                    "content-type": 'application/json'
-                },
                 'body': json.dumps(videos, cls=DecimalEncoder)
             }
             
@@ -174,7 +167,19 @@ def lambda_handler(event, context):
                         err.response['Error']['Code'], err.response['Error']['Message'])
                     raise
                 else:
+                    file_extension = headers['file-extension'].strip('.').lower()
+                    key = '{}-{}-{}.{}'.format(code, uuid.uuid4().hex, session_id, file_extension)
+                    presigned_url = s3.generate_presigned_url(
+                        ClientMethod='put_object',
+                        Params={
+                            'Bucket': 'dothethingvideos',
+                            'Key': key
                         }
+                    )
+                    response = {
+                        'statusCode': 200,
+                        'body': presigned_url
+                    }
         
     # DEFCON 3.1: create new thing
     elif http_method == 'POST' and 'file-extension' in headers and 'session-id' in headers:
@@ -214,7 +219,7 @@ def lambda_handler(event, context):
     else:
         response = {
             'statusCode': 400,
-            'body': 'Must specify code/file ex tension/session ID.'
+            'body': 'Must specify code/file extension/session ID/batch index.'
         }
     
     response['headers'] = {
