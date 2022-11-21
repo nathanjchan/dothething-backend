@@ -17,16 +17,9 @@
             ]
         },
         {
+            "Sid": "AllAPIActionsOnVideoMetadata",
             "Effect": "Allow",
-            "Action": [
-                "dynamodb:BatchGetItem",
-                "dynamodb:GetItem",
-                "dynamodb:Query",
-                "dynamodb:Scan",
-                "dynamodb:BatchWriteItem",
-                "dynamodb:PutItem",
-                "dynamodb:UpdateItem"
-            ],
+            "Action": "dynamodb:*",
             "Resource": "arn:aws:dynamodb:us-west-1:862592418544:table/dothethingvideos-metadata"
         },
         {
@@ -46,6 +39,11 @@
             "Effect": "Allow",
             "Action": "dynamodb:*",
             "Resource": "arn:aws:dynamodb:us-west-1:862592418544:table/dothething-accounts/index/sessionId-index"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "s3:*",
+            "Resource": "*"
         }
     ]
 }

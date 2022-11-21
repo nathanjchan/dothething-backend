@@ -1,7 +1,8 @@
 {
     "headers": {
       "password": "ThisIsEpicPassword",
-      "session-id": "6faff5294da64ab080b6f8f5dd8640ec"
+      "session-id": "cdf91ed9e67e4281b83ae4dc84ba635d",
+      "batch-index": "0"
     },
     "httpMethod": "GET"
 }
