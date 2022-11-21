@@ -216,6 +216,10 @@ def lambda_handler(event, context):
             'statusCode': 400,
             'body': 'Must specify code/file ex tension/session ID.'
         }
-        
+    
+    response['headers'] = {
+        "Access-Control-Allow-Headers": "code,password",
+        "Access-Control-Allow-Origin": "*"
+    }
     logger.info('Response: %s', response)
     return response
