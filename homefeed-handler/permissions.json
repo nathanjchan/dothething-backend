@@ -1,0 +1,51 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "logs:CreateLogGroup",
+            "Resource": "arn:aws:logs:us-west-1:862592418544:*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": [
+                "arn:aws:logs:us-west-1:862592418544:log-group:/aws/lambda/dothethingHomefeedHandler:*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:GetItem",
+                "dynamodb:Query",
+                "dynamodb:Scan",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem"
+            ],
+            "Resource": "arn:aws:dynamodb:us-west-1:862592418544:table/dothethingvideos-metadata"
+        },
+        {
+            "Sid": "AllAPIActionsOnAccounts",
+            "Effect": "Allow",
+            "Action": "dynamodb:*",
+            "Resource": "arn:aws:dynamodb:us-west-1:862592418544:table/dothething-accounts"
+        },
+        {
+            "Sid": "AllAPIActionsOnVideosAccountIdIndex",
+            "Effect": "Allow",
+            "Action": "dynamodb:*",
+            "Resource": "arn:aws:dynamodb:us-west-1:862592418544:table/dothethingvideos-metadata/index/accountId-index"
+        },
+        {
+            "Sid": "AllAPIActionsOnAccountsSessionIdIndex",
+            "Effect": "Allow",
+            "Action": "dynamodb:*",
+            "Resource": "arn:aws:dynamodb:us-west-1:862592418544:table/dothething-accounts/index/sessionId-index"
+        }
+    ]
+}
