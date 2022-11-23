@@ -75,23 +75,51 @@ def lambda_handler(event, context):
                 err.response['Error']['Code'], err.response['Error']['Message'])
             raise
         else:
-            account_id = response['Items'][0]['id']
-            print("Account ID is", account_id)
-
-            # query dothethingvideos-metadata to get all videos for this account
-            try:
-                # query on secondary index accountId
-                response = videos_table.query(IndexName="accountId-index", KeyConditionExpression="accountId = :accountId", ExpressionAttributeValues={":accountId": account_id})
-            except ClientError as err:
-                logger.error(
-                    "Couldn't query for videos for account with ID %s. Here's why: %s: %s", account_id,
-                    err.response['Error']['Code'], err.response['Error']['Message'])
-                raise
+            if len(response['Items']) == 0:
+                response = {
+                    'statusCode': 401,
+                    'body': 'Invalid session ID.'
+                }
             else:
-                videos = processVideos(response['Items'], int(headers['batch-index']))
+                account_id = response['Items'][0]['id']
+                print("Account ID is", account_id)
+
+                # query dothethingvideos-metadata to get all videos for this account
+                try:
+                    # query on secondary index accountId
+                    response = videos_table.query(IndexName="accountId-index", KeyConditionExpression="accountId = :accountId", ExpressionAttributeValues={":accountId": account_id})
+                except ClientError as err:
+                    logger.error(
+                        "Couldn't query for videos for account with ID %s. Here's why: %s: %s", account_id,
+                        err.response['Error']['Code'], err.response['Error']['Message'])
+                    raise
+                else:
+                    videos = processVideos(response['Items'], int(headers['batch-index']))
+                    response = {
+                        'statusCode': 200,
+                        'body': json.dumps(videos, cls=DecimalEncoder)
+                    }
+
+    elif http_method == 'GET' and 'session-id' in headers:
+        session_id = headers['session-id']
+        print("Session ID is", session_id)
+        try:
+            response = accounts_table.query(IndexName="sessionId-index", KeyConditionExpression="sessionId = :sessionId", ExpressionAttributeValues={":sessionId": session_id})
+        except ClientError as err:
+            logger.error(
+                "Couldn't query for account with session_id %s. Here's why: %s: %s", session_id,
+                err.response['Error']['Code'], err.response['Error']['Message'])
+            raise
+        else:
+            if len(response['Items']) == 0:
+                response = {
+                    'statusCode': 401,
+                    'body': 'Invalid session ID.'
+                }
+            else:
                 response = {
                     'statusCode': 200,
-                    'body': json.dumps(videos, cls=DecimalEncoder)
+                    'body': 'Valid session ID.'
                 }
     
     # DEFCON 1.1: get metadata for existing thing, given code
@@ -117,6 +145,14 @@ def lambda_handler(event, context):
                 'statusCode': 200,
                 'body': json.dumps(videos, cls=DecimalEncoder)
             }
+
+    elif http_method == 'GET' and 'code' in headers:
+        code = headers['code']
+        message = "Bruh check out this domino cascade I made. Use code {} and get the app https://thedominoapp.com".format(code)
+        response = {
+            'statusCode': 200,
+            'body': json.dumps(message)
+        }
             
     # DEFCON 1.2: get presigned URL given id
     elif http_method == 'GET' and 'id' in headers:
@@ -223,8 +259,7 @@ def lambda_handler(event, context):
         }
     
     response['headers'] = {
-        "Access-Control-Allow-Headers": "code,password",
+        "Access-Control-Allow-Headers": "code,password,batch-index",
         "Access-Control-Allow-Origin": "*"
     }
-    logger.info('Response: %s', response)
     return response
